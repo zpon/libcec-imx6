@@ -100,6 +100,14 @@ if test "x$use_rpi" != "xno"; then
   esac
 fi
 
+## i.MX6 support
+AC_ARG_ENABLE([imx6],
+  [AS_HELP_STRING([--enable-imx6],
+  [enable support for freescale i.MX6 (default is no)])],
+  [use_imx6=$enableval],
+  [use_imx6=no])
+
+
 ## add the top dir and include to the include path, so we can include config.h and cec.h
 CPPFLAGS="$CPPFLAGS -I\$(abs_top_srcdir)/src -I\$(abs_top_srcdir)/include"
 
@@ -308,6 +316,16 @@ else
   features="$features\n  EXYNOS support :\t\t\tno"
 fi
 
+## mark i.MX6 support as available
+if test "x$use_imx6" != "xno"; then
+  AC_DEFINE([HAVE_IMX_API],[1],[Define to 1 to include i.MX6 support])
+  AM_CONDITIONAL(USE_IMX_API, true)
+  features="$features\n  i.MX6 support :\t\t\tyes"
+  LIB_INFO="$LIB_INFO 'i.MX6'"
+else
+  AM_CONDITIONAL(USE_IMX_API, false)
+  features="$features\n  i.MX6 support :\t\t\tno"
+fi
 
 ## check if our build system is complete
 AC_CHECK_HEADER(algorithm,,AC_MSG_ERROR($msg_required_header_missing))
