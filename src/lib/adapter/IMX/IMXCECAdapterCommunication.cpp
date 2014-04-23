@@ -189,14 +189,18 @@ cec_vendor_id CIMXCECAdapterCommunication::GetVendorId(void)
 uint16_t CIMXCECAdapterCommunication::GetPhysicalAddress(void)
 {
   uint32_t info;
+  uint16_t phy_addr;
 
   if (m_dev->Ioctl(HDMICEC_IOC_GETPHYADDRESS, &info) != 0)
   {
     LIB_CEC->AddLog(CEC_LOG_ERROR, "%s: HDMICEC_IOC_GETPHYADDRESS failed !", __func__);
     return CEC_INVALID_PHYSICAL_ADDRESS; 
   }
+  /* Rebuild 16 bit raw value from fsl 32 bits value */
+  phy_addr = ((info & 0x0f) << 12) | (info & 0x0f00) |
+             ((info & 0x0f0000) >> 12) | ((info & 0x0f000000) >> 24);
 
-  return info;
+  return phy_addr;
 }
 
 
@@ -265,6 +269,13 @@ void *CIMXCECAdapterCommunication::Process(void)
 
         if (!IsStopped())
           m_callback->OnCommandReceived(cmd);
+      }
+
+      if (event.event_type == MESSAGE_TYPE_CONNECTED)
+      /* HDMI has just been reconnected - Notify  phy address*/
+      {
+        uint16_t iNewAddress = GetPhysicalAddress();
+        m_callback->HandlePhysicalAddressChanged(iNewAddress);
       }
       /* We are not interested in other events */
     } /*else {
