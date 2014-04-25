@@ -88,6 +88,8 @@ CIMXCECAdapterCommunication::CIMXCECAdapterCommunication(IAdapterCommunicationCa
   m_iNextMessage = 0;
   //m_logicalAddresses.Clear();
   m_logicalAddress = CECDEVICE_UNKNOWN;
+  m_bLogicalAddressRegistered = false;
+  m_bInitialised = false;
   m_dev = new CCDevSocket(CEC_IMX_PATH);
 }
 
@@ -110,10 +112,11 @@ bool CIMXCECAdapterCommunication::Open(uint32_t iTimeoutMs, bool UNUSED(bSkipChe
   if (m_dev->Open(iTimeoutMs))
   {
     if (!bStartListening || CreateThread()) {
-      if (m_dev->Ioctl(HDMICEC_IOC_STARTDEVICE, NULL) != 0) {
-        LIB_CEC->AddLog(CEC_LOG_ERROR, "%s: Unable to start device\n", __func__);
+      if (m_dev->Ioctl(HDMICEC_IOC_STARTDEVICE, NULL) == 0) {
+         m_bInitialised = true;
+         return true;
       }
-      return true;
+      LIB_CEC->AddLog(CEC_LOG_ERROR, "%s: Unable to start device\n", __func__);
     }
     m_dev->Close();
   }
@@ -125,10 +128,16 @@ bool CIMXCECAdapterCommunication::Open(uint32_t iTimeoutMs, bool UNUSED(bSkipChe
 void CIMXCECAdapterCommunication::Close(void)
 {
   StopThread(0);
+
+  CLockObject lock(m_mutex);
+  if (!m_bInitialised) {
+    return;
+  }
   if (m_dev->Ioctl(HDMICEC_IOC_STOPDEVICE, NULL) != 0) {
     LIB_CEC->AddLog(CEC_LOG_ERROR, "%s: Unable to stop device\n", __func__);
   }
   m_dev->Close();
+  m_bInitialised = false;
 }
 
 
@@ -210,31 +219,60 @@ cec_logical_addresses CIMXCECAdapterCommunication::GetLogicalAddresses(void)
   addresses.Clear();
 
   CLockObject lock(m_mutex);
-  if ( m_logicalAddress != CECDEVICE_UNKNOWN)
+  if ((m_logicalAddress & (CECDEVICE_UNKNOWN | CECDEVICE_UNREGISTERED)) == 0)
     addresses.Set(m_logicalAddress);
 
   return addresses;
 }
 
-
-bool CIMXCECAdapterCommunication::SetLogicalAddresses(const cec_logical_addresses &addresses)
+void CIMXCECAdapterCommunication::HandleLogicalAddressLost(cec_logical_address UNUSED(oldAddress))
 {
-  int log_addr = addresses.primary;
+  UnregisterLogicalAddress();
+}
 
+bool CIMXCECAdapterCommunication::UnregisterLogicalAddress(void)
+{
   CLockObject lock(m_mutex);
-  if (m_logicalAddress == log_addr)
-      return true;
+  if (!m_bLogicalAddressRegistered)
+    return true;
 
-  if (m_dev->Ioctl(HDMICEC_IOC_SETLOGICALADDRESS, (void *)log_addr) != 0)
+  if (m_dev->Ioctl(HDMICEC_IOC_SETLOGICALADDRESS, (void *)CECDEVICE_BROADCAST) != 0)
   {
     LIB_CEC->AddLog(CEC_LOG_ERROR, "%s: HDMICEC_IOC_SETLOGICALADDRESS failed !", __func__);
     return false;
   }
 
-  m_logicalAddress = (cec_logical_address)log_addr;
+  m_logicalAddress = CECDEVICE_UNKNOWN;
+  m_bLogicalAddressRegistered = false;
   return true;
 }
 
+bool CIMXCECAdapterCommunication::RegisterLogicalAddress(const cec_logical_address address)
+{
+  CLockObject lock(m_mutex);
+
+  if (m_logicalAddress == address && m_bLogicalAddressRegistered)
+  {
+    return true;
+  }
+
+  if (m_dev->Ioctl(HDMICEC_IOC_SETLOGICALADDRESS, (void *)address) != 0)
+  {
+    LIB_CEC->AddLog(CEC_LOG_ERROR, "%s: HDMICEC_IOC_SETLOGICALADDRESS failed !", __func__);
+    return false;
+  }
+
+  m_logicalAddress = address;
+  m_bLogicalAddressRegistered = true;
+  return true;
+}
+
+bool CIMXCECAdapterCommunication::SetLogicalAddresses(const cec_logical_addresses &addresses)
+{
+  int log_addr = addresses.primary;
+
+  return RegisterLogicalAddress((cec_logical_address)log_addr);
+}
 
 void *CIMXCECAdapterCommunication::Process(void)
 {

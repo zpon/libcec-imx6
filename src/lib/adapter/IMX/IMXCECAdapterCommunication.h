@@ -85,7 +85,9 @@ namespace CEC
     cec_adapter_type GetAdapterType(void) { return ADAPTERTYPE_IMX; }
     uint16_t GetAdapterVendorId(void) const { return IMX_ADAPTER_VID; }
     uint16_t GetAdapterProductId(void) const { return IMX_ADAPTER_PID; }
+    void HandleLogicalAddressLost(cec_logical_address UNUSED(oldAddress));
     void SetActiveSource(bool UNUSED(bSetTo), bool UNUSED(bClientUnregistered)) {}
+    bool RegisterLogicalAddress(const cec_logical_address address);
     ///}
 
     /** @name PLATFORM::CThread implementation */
@@ -94,7 +96,8 @@ namespace CEC
     ///}
 
   private:
-    bool IsInitialised(void) const { return m_dev != 0; };
+    bool IsInitialised(void) const { return m_bInitialised; };
+    bool UnregisterLogicalAddress(void);
 
     std::string                 m_strError; /**< current error message */
 
@@ -103,7 +106,9 @@ namespace CEC
 
     PLATFORM::CMutex            m_mutex;
     PLATFORM::CCDevSocket       *m_dev;	/**< the device connection */
-    
+    bool                        m_bLogicalAddressRegistered;
+    bool                        m_bInitialised;
+
     PLATFORM::CMutex            m_messageMutex;
     uint32_t                    m_iNextMessage;
     std::map<uint32_t, CAdapterMessageQueueEntry *> m_messages;
