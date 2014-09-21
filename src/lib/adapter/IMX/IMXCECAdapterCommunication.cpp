@@ -36,29 +36,8 @@
 #include "lib/platform/util/StdString.h"
 #include "lib/platform/util/buffer.h"
 
-/*
- * Ioctl definitions from kernel header
- */
-#define HDMICEC_IOC_MAGIC  'H'
-#define HDMICEC_IOC_SETLOGICALADDRESS _IOW(HDMICEC_IOC_MAGIC,  1, unsigned char)
-#define HDMICEC_IOC_STARTDEVICE _IO(HDMICEC_IOC_MAGIC,  2)
-#define HDMICEC_IOC_STOPDEVICE  _IO(HDMICEC_IOC_MAGIC,  3)
-#define HDMICEC_IOC_GETPHYADDRESS _IOR(HDMICEC_IOC_MAGIC,  4, unsigned char[4])
-
-#define MAX_CEC_MESSAGE_LEN 17
-
-#define MESSAGE_TYPE_RECEIVE_SUCCESS 1
-#define MESSAGE_TYPE_NOACK 2
-#define MESSAGE_TYPE_DISCONNECTED 3
-#define MESSAGE_TYPE_CONNECTED 4
-#define MESSAGE_TYPE_SEND_SUCCESS 5
-
-typedef struct hdmi_cec_event{
-  int event_type;
-  int msg_len;
-  unsigned char msg[MAX_CEC_MESSAGE_LEN];
-}hdmi_cec_event;
-
+// FIXME Should use kernel include
+#include "cec-dev.h"
 
 using namespace std;
 using namespace CEC;
@@ -152,7 +131,7 @@ cec_adapter_message_state CIMXCECAdapterCommunication::Write(
   const cec_command &data, bool &UNUSED(bRetry), uint8_t UNUSED(iLineTimeout), bool UNUSED(bIsReply))
 {
   //cec_frame frame;
-  unsigned char message[MAX_CEC_MESSAGE_LEN];
+  unsigned char message[MAX_MESSAGE_LEN];
   int msg_len = 1;
   cec_adapter_message_state rc = ADAPTER_MESSAGE_STATE_ERROR;
 
@@ -276,11 +255,8 @@ bool CIMXCECAdapterCommunication::SetLogicalAddresses(const cec_logical_addresse
 
 void *CIMXCECAdapterCommunication::Process(void)
 {
-  bool bHandled;
-  hdmi_cec_event event;
+  struct cec_user_event event;
   int ret;
-
-  uint32_t opcode, status;
   cec_logical_address initiator, destination;
 
   while (!IsStopped())
