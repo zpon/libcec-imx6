@@ -204,11 +204,6 @@ cec_logical_addresses CIMXCECAdapterCommunication::GetLogicalAddresses(void)
   return addresses;
 }
 
-void CIMXCECAdapterCommunication::HandleLogicalAddressLost(cec_logical_address UNUSED(oldAddress))
-{
-  UnregisterLogicalAddress();
-}
-
 bool CIMXCECAdapterCommunication::UnregisterLogicalAddress(void)
 {
   CLockObject lock(m_mutex);
