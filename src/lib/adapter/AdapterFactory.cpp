@@ -57,6 +57,11 @@
 #include "IMX/IMXCECAdapterCommunication.h"
 #endif
 
+#if defined(HAVE_EXYNOS_API)
+#include "Exynos/ExynosCECAdapterDetection.h"
+#include "Exynos/ExynosCECAdapterCommunication.h"
+#endif
+
 using namespace std;
 using namespace CEC;
 
@@ -114,7 +119,6 @@ int8_t CAdapterFactory::DetectAdapters(cec_adapter_descriptor *deviceList, uint8
   }
 #endif
 
-
 #if defined(HAVE_IMX_API)
   if (iAdaptersFound < iBufSize && CIMXCECAdapterDetection::FindAdapter() &&
       (!strDevicePath || !strcmp(strDevicePath, CEC_IMX_VIRTUAL_COM)))
@@ -124,6 +128,17 @@ int8_t CAdapterFactory::DetectAdapters(cec_adapter_descriptor *deviceList, uint8
     deviceList[iAdaptersFound].iVendorId = IMX_ADAPTER_VID;
     deviceList[iAdaptersFound].iProductId = IMX_ADAPTER_PID;
     deviceList[iAdaptersFound].adapterType = ADAPTERTYPE_IMX;
+    iAdaptersFound++;
+#endif
+    
+#if defined(HAVE_EXYNOS_API)
+  if (iAdaptersFound < iBufSize && CExynosCECAdapterDetection::FindAdapter())
+  {
+    snprintf(deviceList[iAdaptersFound].strComPath, sizeof(deviceList[iAdaptersFound].strComPath), CEC_EXYNOS_PATH);
+    snprintf(deviceList[iAdaptersFound].strComName, sizeof(deviceList[iAdaptersFound].strComName), CEC_EXYNOS_VIRTUAL_COM);
+    deviceList[iAdaptersFound].iVendorId = 0;
+    deviceList[iAdaptersFound].iProductId = 0;
+    deviceList[iAdaptersFound].adapterType = ADAPTERTYPE_EXYNOS;
     iAdaptersFound++;
   }
 #endif
@@ -143,6 +158,11 @@ IAdapterCommunication *CAdapterFactory::GetInstance(const char *strPort, uint16_
     return new CTDA995xCECAdapterCommunication(m_lib->m_cec);
 #endif
 
+#if defined(HAVE_EXYNOS_API)
+  if (!strcmp(strPort, CEC_EXYNOS_VIRTUAL_COM))
+    return new CExynosCECAdapterCommunication(m_lib->m_cec);
+#endif
+
 #if defined(HAVE_RPI_API)
   if (!strcmp(strPort, CEC_RPI_VIRTUAL_COM))
     return new CRPiCECAdapterCommunication(m_lib->m_cec);
@@ -157,7 +177,8 @@ IAdapterCommunication *CAdapterFactory::GetInstance(const char *strPort, uint16_
   return new CUSBCECAdapterCommunication(m_lib->m_cec, strPort, iBaudRate);
 #endif
 
-#if !defined(HAVE_RPI_API) && !defined(HAVE_P8_USB) && !defined(HAVE_TDA995X_API) && !defined(HAVE_IMX_API)
+
+#if !defined(HAVE_RPI_API) && !defined(HAVE_P8_USB) && !defined(HAVE_TDA995X_API) && !defined(HAVE_EXYNOS_API) && !defined(HAVE_IMX_API)
   return NULL;
 #endif
 }
