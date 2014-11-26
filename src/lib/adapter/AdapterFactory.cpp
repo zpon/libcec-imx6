@@ -129,6 +129,7 @@ int8_t CAdapterFactory::DetectAdapters(cec_adapter_descriptor *deviceList, uint8
     deviceList[iAdaptersFound].iProductId = IMX_ADAPTER_PID;
     deviceList[iAdaptersFound].adapterType = ADAPTERTYPE_IMX;
     iAdaptersFound++;
+  }
 #endif
     
 #if defined(HAVE_EXYNOS_API)
