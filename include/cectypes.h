@@ -311,7 +311,7 @@ namespace CEC {
 /*!
  * the path to use for the Exynos HDMI CEC device
  */
-#define CEC_EXYNOS_PATH		        "/dev/CEC"
+#define CEC_EXYNOS_PATH		"/dev/CEC"
 
 /*!
  * the name of the virtual COM port to use for the EXYNOS' CEC wire
